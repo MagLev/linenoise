@@ -1,0 +1,79 @@
+Salvatore,
+
+I have integrated your linenoise code into Maglev, and into our
+Smalltalk product Gemstone/S 64bit v3.0.  We are using it in two places,
+
+  as the line editor in the topaz executable of the Smalltalk product.
+
+  as the line editor invoked when Smalltalk or Ruby reads through
+  a Smalltalk or Ruby File object from stdin from a terminal.
+
+It is working very well for us. 
+Also you can report it works on Solarix x86 (version SunOs 5.10) .
+
+Using your commit 6770cf56d3194f3e3fe1a73d450a33b48a7912ca (Mar 24, 2010)
+I have discovered the following things during the integration
+
+  The calls to read() and write() do not handle a possible EINTR error,
+  thus data could be lost on write, or an error falsely reported to the
+  application.  On Solaris, tcgetattr() may also produce EINTR.
+
+  If you have an application reading a line at a time through linenoise,
+  and the user pastes many lines of input (20..50 lines) into the
+  xterm , then a good portion of the input will be lost.  I believe this
+  is because the linenoise code passes TCSAFLUSH to tcsetattr().  For example,
+  from the man pages of an Ubuntu Linux system using 2.6.28 kernel, I see this:
+       TCSAFLUSH
+              the change occurs after all output written to the object
+              referred by fd has been transmitted, and all input that has been
+              received but not read will be discarded before the change is
+              made.
+  Thus it would appear that TCSAFLUSH practically guarantees loss of input
+  in the situation of a large paste .
+  In my situation , I usually have an xterm window on a Linux desktop that
+  in which I have done an ssh login into a Solaris or Linux server machine.
+  Using the readHist and readHistLen static data in our linenoise.c for 
+  debugging this situation, I saw the application receive a large paste
+  in chunks of 400 to 600 bytes.
+
+
+The edited linenoise code as currently used in maglev includes these changes
+  Requires C++ 
+
+  Moved the allocation of the line reader state to the caller , so  
+  caller has control over memory allocation.
+
+  Changed malloc/free calls to use Maglev VM entry points (UtlMalloc ...)
+
+  Handling of EINTR and also checking for Maglev-specific state produced
+  by our SIGTERM handler.
+
+  When setting terminal to raw input mode, do not clear the ISIG
+  bit, so application's SIGINT (i.e. ctrl-C) handler can run normally.
+  In our case, the SIGINT handler will run (and cause a read() to return
+  with EINTR.  The checkEintr() function will notice that SIGINT was received via
+  the result from UnixIoIsInterrupted() , and return an error status that
+  triggers an error return status from LineRead().  
+  The signature of LineRead() was changed to have the function result
+  be an error status so the application can do what it wants to on ctrl-C.  
+  checkEintr() also notices if a SIGTERM was received.  In our situation,
+  we may be in an application command reading multiple lines of data,
+  and a ctrl-C is supposed to terminate the whole command, not just the
+  line being read.
+
+  When returning a line to the application, use TCSADRAIN instead of
+  TCSAFLUSH, and leave the terminal in raw input mode, and normal output mode.
+  I could not find any other obvious and easy fix to handle the large paste
+  situation.
+
+  Rely on application shutdown code to call LineReadShutdown to
+  get terminal back to normal input mode.
+
+  When reading input, read as much as available into a buffer, and use
+  that buffer to satifsy subsequent character reads (part of handling the
+  large paste problem).  In our case, all reading from stdin that is a tty
+  will be done via the same linenoise state, so this buffering should not
+  cause loss of data. Possibly this buffering is not needed if one is also
+  using TCSADRAIN . 
+
+Allen Otis,  allen.otis@gemstone.com  

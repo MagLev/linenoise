@@ -34,8 +34,20 @@
 #ifndef __LINENOISE_H
 #define __LINENOISE_H
 
-char *linenoise(const char *prompt);
-int linenoiseHistoryAdd(const char *line);
-int linenoiseHistorySetMaxLen(int len);
+class LineReaderStateType ;
+
+int LineRead(LineReaderStateType *state, const char *prompt, char *dest, size_t destSize);
+  // function result 0 for success, -1 for error,
+  // -2 for EINTR as from ctl-C on interactive input,
+  // -3 for EOF on stdin
+  
+
+int LineReaderHistoryAdd(LineReaderStateType *state, const char *line);
+int LineReaderHistorySetMaxLen(LineReaderStateType *state, int len);
+int LineReaderHistoryMaxLen(LineReaderStateType *state);
+
+void LineReadShutdown(LineReaderStateType *st);
+
+LineReaderStateType* LineReaderAllocate();
 
 #endif /* __LINENOISE_H */
