@@ -79,7 +79,34 @@
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
+
+static int checkEintr();
+
+static int getColumns(void) 
+{
+    struct winsize ws;
+
+    int winSz = TIOCGWINSZ; // macro uses  'unsigned long' on Mac
+    for (;;) {
+      if (ioctl(1, winSz, &ws) == -1) {
+        int errNum = errno;
+        if (errNum != EINTR) {
+          return 80;
+        }
+        int status = checkEintr();
+        if (status == -2) {
+          return -2; // SIGINT received
+        }
+        // retry after EINTR
+      } else {
+        return ws.ws_col;
+      }
+    }
+}
+
+
 #include "global.ht"
+// from this point forwards  'long' is not allowed , use int or in64
 
 #include "utlansi.hf"
 #include "unixio.hf"
@@ -374,13 +401,6 @@ void LineReadShutdown(LineReaderStateType *st)
   freeHistory(st);
 }
 
-static int getColumns(void) 
-{
-    struct winsize ws;
-
-    if (ioctl(1, TIOCGWINSZ, &ws) == -1) return 80;
-    return ws.ws_col;
-}
 
 static int refreshLine(int fd, const char *prompt, char *buf, size_t len, size_t pos, 
 				size_t cols) 
@@ -444,6 +464,10 @@ static int linenoisePrompt(LineReaderStateType *st,
     size_t pos = 0;
     size_t len = 0;
     size_t cols = getColumns();
+    if (cols < 0) {
+      int status = cols;
+      return status;
+    } 
     int history_index = 0;
 
     buf[0] = '\0';
