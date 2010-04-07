@@ -36,12 +36,13 @@
 
 class LineReaderStateType ;
 
+// All Functions have no effect, or return NULL on Windows
+
 int LineRead(LineReaderStateType *state, const char *prompt, char *dest, size_t destSize);
   // function result 0 for success, -1 for error,
   // -2 for EINTR as from ctl-C on interactive input,
   // -3 for EOF on stdin
   
-
 int LineReaderHistoryAdd(LineReaderStateType *state, const char *line);
 int LineReaderHistorySetMaxLen(LineReaderStateType *state, int len);
 int LineReaderHistoryMaxLen(LineReaderStateType *state);

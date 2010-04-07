@@ -82,6 +82,7 @@
 
 static int checkEintr();
 
+#if defined(FLG_UNIX)
 static int getColumns(void) 
 {
     struct winsize ws;
@@ -103,16 +104,18 @@ static int getColumns(void)
       }
     }
 }
-
+#endif
 
 #include "global.ht"
 // from this point forwards  'long' is not allowed , use int or in64
 
+#include "linenoise.h"
+
+#if defined(FLG_UNIX)
 #include "utlansi.hf"
 #include "unixio.hf"
 #include "host.hf"
-
-#include "linenoise.h"
+#include "hostshr.hf"
 
 class LineReaderStateType {
  public: 
@@ -378,6 +381,27 @@ static int enableRawIO(LineReaderStateType *st, int fd)
   }
 }
 
+static int restoreIOModes(LineReaderStateType *st, int fd)
+{
+  // used after a SIGCONT detected
+  struct termios raw;  
+  if (st->raw_inmode && st->raw_outmode) {
+    raw = st->rawin_out_termios;
+  } else if (st->raw_inmode) {
+    raw = st->rawin_termios;
+  } else {
+    return 0;
+  }
+  for (;;) {
+    if (tcsetattr(fd, TCSADRAIN, &raw) == 0)
+      break;
+    int status = checkEintr();
+    if (status < 0)
+      return status;
+  }
+  return 0;
+}
+
 static int disableRawIO(LineReaderStateType *st, int fd)  
 {
   if (st->orig_termios_valid) {
@@ -393,7 +417,6 @@ static int disableRawIO(LineReaderStateType *st, int fd)
   } 
   return 0;
 }
-
 
 void LineReadShutdown(LineReaderStateType *st)
 {
@@ -490,6 +513,14 @@ static int linenoisePrompt(LineReaderStateType *st,
           return status; // error or EOF
         
         switch(c) {
+        case 10:   // ascii LF , can occur after a ctrl-Z / fg transition.
+                   // could not easily make a SIGCONT handler work.
+                   // handle as if it was ASCII CR
+            status = restoreIOModes(st, fd);  
+            if (status < 0)
+              return status;
+            st->history_len--;
+            return 0;
         case 13:    /* enter (ascii CR) */
             st->history_len--;
             return 0;
@@ -759,3 +790,37 @@ int LineReaderHistorySetMaxLen(LineReaderStateType *st, int len)
         st->history_len = st->history_max_len;
     return 1;
 }
+
+#else
+// -------------------------  Windows implementations
+class LineReaderStateType;
+
+LineReaderStateType* LineReaderAllocate()
+{
+  return NULL;
+}
+
+int LineRead(LineReaderStateType *state, const char *prompt, char *dest, size_t destSize)
+{
+  return -1;
+}
+
+int LineReaderHistoryAdd(LineReaderStateType *state, const char *line)
+{
+  return 0;
+} 
+
+int LineReaderHistorySetMaxLen(LineReaderStateType *state, int len)
+{
+  return 0;
+}
+int LineReaderHistoryMaxLen(LineReaderStateType *state)
+{
+  return 0;
+}
+
+void LineReadShutdown(LineReaderStateType *st)
+{
+  return;
+}
+#endif /* FLG_UNIX*/

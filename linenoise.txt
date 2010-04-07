@@ -1,9 +1,9 @@
-Salvatore,
+6 April 2010
 
 I have integrated your linenoise code into Maglev, and into our
-Smalltalk product Gemstone/S 64bit v3.0.  We are using it in two places,
+Smalltalk product Gemstone/S 64bit v3.0  .  We are using it in two places,
 
-  as the line editor in the topaz executable of the Smalltalk product.
+  as the line editor in the  topaz  executable of the Smalltalk product.
 
   as the line editor invoked when Smalltalk or Ruby reads through
   a Smalltalk or Ruby File object from stdin from a terminal.
@@ -16,19 +16,19 @@ I have discovered the following things during the integration
 
   The calls to read() and write() do not handle a possible EINTR error,
   thus data could be lost on write, or an error falsely reported to the
-  application.  On Solaris, tcgetattr() may also produce EINTR.
+  application.   On Solaris, tcgetattr() may also produce EINTR.
 
   If you have an application reading a line at a time through linenoise,
   and the user pastes many lines of input (20..50 lines) into the
   xterm , then a good portion of the input will be lost.  I believe this
   is because the linenoise code passes TCSAFLUSH to tcsetattr().  For example,
-  from the man pages of an Ubuntu Linux system using 2.6.28 kernel, I see this:
+  from the man pages of an Ubuntu Linux system using  2.6.28 kernel, I see this:
        TCSAFLUSH
-              the change occurs after all output written to the object
+              the  change  occurs  after  all  output  written  to  the object
               referred by fd has been transmitted, and all input that has been
-              received but not read will be discarded before the change is
+              received  but  not  read  will be discarded before the change is
               made.
-  Thus it would appear that TCSAFLUSH practically guarantees loss of input
+  Thus it would appear that TCSAFLUSH practically guarantees loss  of input
   in the situation of a large paste .
   In my situation , I usually have an xterm window on a Linux desktop that
   in which I have done an ssh login into a Solaris or Linux server machine.
@@ -45,7 +45,7 @@ The edited linenoise code as currently used in maglev includes these changes
 
   Changed malloc/free calls to use Maglev VM entry points (UtlMalloc ...)
 
-  Handling of EINTR and also checking for Maglev-specific state produced
+  Handling of EINTR and also checking for Maglev-specific state  produced
   by our SIGTERM handler.
 
   When setting terminal to raw input mode, do not clear the ISIG
@@ -76,4 +76,19 @@ The edited linenoise code as currently used in maglev includes these changes
   cause loss of data. Possibly this buffering is not needed if one is also
   using TCSADRAIN . 
 
-Allen Otis,  allen.otis@gemstone.com  
+Allen Otis ,    allen.otis@gemstone.com  
+
+-------------------------
+7 April 2010
+
+  By not clearing the ISIG bit in the terminal mode, we allow the
+  application to be suspended/resumed with
+     ctrl-Z 
+     fg 
+  In the case of a suspend/resume , after application has been resumed, the
+  terminal modes have reverted to default, and the ENTER key is read as
+  ascii value 10 instead of 13.  I could not easily get a SIGCONT handler 
+  to work on Solaris (application appeared to not receive SIGCONT).  
+  So I just used the ascii value 10 in linenoisePrompt as a clue that we need to
+  restore the raw modes.
+  
