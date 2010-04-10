@@ -5,6 +5,9 @@
  * 
  *   http://github.com/antirez/linenoise
  *
+ *   Gemstone note: (this file started with linenoise.c from above URL 
+                     as of 24 March 2010 , and has been modified)
+ *
  * Does a number of crazy assumptions that happen to be true in 99.9999% of
  * the 2010 UNIX computers around.
  *
@@ -123,9 +126,9 @@ class LineReaderStateType {
   struct termios rawin_out_termios;
   struct termios rawin_termios;
   int orig_termios_valid;
-  int raw_inmode ; /* for atexit() function to check if restore is needed*/
+  int raw_inmode ; 
   int raw_outmode;
-  int atexit_registered ; /* register atexit just 1 time */
+  // int atexit_registered ; 
   int history_max_len ;
   int history_len ;
   int unsupportedTerm;
@@ -138,7 +141,7 @@ class LineReaderStateType {
     raw_inmode = 0;
     raw_outmode = 0;
     orig_termios_valid = 0;
-    atexit_registered = 0;
+    //atexit_registered = 0;
     history_max_len = 100;
     history_len = 0;
     history = NULL; 
@@ -156,8 +159,6 @@ LineReaderStateType* LineReaderAllocate()
 }
 
 static const char* unsupported_term[] = {"dumb","cons25",NULL};
-
-static void linenoiseAtExit(void);
 
 static int isUnsupportedTerm(void) 
 {
