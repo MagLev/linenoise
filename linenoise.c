@@ -501,15 +501,17 @@ static int linenoisePrompt(LineReaderStateType *st,
      * initially is just an empty string. */
     LineReaderHistoryAdd(st, "");
     
-    int status = writeFd(fd,prompt,plen);
-    if (status < 0) 
-       return status;
+    if (plen > 0) {
+      int status = writeFd(fd,prompt,plen);
+      if (status < 0) 
+         return status;
+   }
     
     while(1) {
         char c;
         char seq[2];
 
-        status = readChar(st, fd, &c);
+        int status = readChar(st, fd, &c);
         if (status <= 0) 
           return status; // error or EOF
         
