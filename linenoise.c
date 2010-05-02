@@ -776,17 +776,16 @@ int LineReaderHistoryMaxLen(LineReaderStateType *st)
 int LineReaderHistorySetMaxLen(LineReaderStateType *st, int len) 
 {
     if (len < 1) return 0;
-    if (st->history && len != st->history_max_len) {
-        int tocopy = st->history_len;
 
-        char** nHist = (char**)UtlMalloc_(sizeof(char*)*len, __LINE__ );
-        if (nHist == NULL) return 0;
-        if (len < tocopy) tocopy = len;
-        memcpy(nHist, 
-              st->history + (st->history_max_len - tocopy), 
-               sizeof(char*)*tocopy);
-        UtlFree(st->history);
-        st->history = nHist;
+    if (st->history && len != st->history_max_len) {
+      char** nHist = (char**)UtlMalloc_(sizeof(char*) * len, __LINE__ );
+      if (nHist == NULL) return 0;
+      
+      int tocopy = MIN(st->history_len, len);
+      memcpy(nHist, st->history, sizeof(char*) * tocopy);
+      memset(nHist + tocopy, 0,  sizeof(char*) * (len - tocopy));
+      UtlFree(st->history);
+      st->history = nHist;
     }
     st->history_max_len = len;
     if (st->history_len > st->history_max_len)

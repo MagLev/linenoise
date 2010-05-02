@@ -91,4 +91,16 @@ Allen Otis ,    allen.otis@gemstone.com
   to work on Solaris (application appeared to not receive SIGCONT).  
   So I just used the ascii value 10 in linenoisePrompt as a clue that we need to
   restore the raw modes.
-  
+ 
+----------------------
+30 April 2010
+
+  The memcpy call in LineReaderHistorySetMaxLen is wrong in the original sources
+  The code
+        memcpy(new,
+              st->history + (st->history_max_len - tocopy),
+               sizeof(char*)*tocopy);
+  should be
+        memcpy(new, st->history, sizeof(char*) * tocopy);
+        memset(new + tocopy, 0, sizeof(char*) *(len - tocopy));
+ 
