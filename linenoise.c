@@ -185,6 +185,10 @@ static void freeHistory(LineReaderStateType *st)
 static char* lineDup(const char* str)
 {
   intptr_t len = strlen(str);
+  if (len > 0 && str[len - 1] == '\n') {
+    //exclude LF at end of line from history copy 
+    len -= 1;
+  }
   char* res = (char*)UtlMalloc_(len + 1, __LINE__);
   if (res == NULL) {
     return res;
@@ -516,17 +520,22 @@ static int linenoisePrompt(LineReaderStateType *st,
           return status; // error or EOF
         
         switch(c) {
-        case 10:   // ascii LF , can occur after a ctrl-Z / fg transition.
+        case 10:   // ascii LF , can occur after a   (ctrl-Z , fg) transition.
                    // could not easily make a SIGCONT handler work.
-                   // handle as if it was ASCII CR
             status = restoreIOModes(st, fd);  
-            if (status < 0)
+            if (status < 0) {
               return status;
-            st->history_len--;
-            return 0;
+            }
+            // fall through to handle as if it was ASCII CR
         case 13:    /* enter (ascii CR) */
+            if (len > buflen - 2) { 
+              return -4;
+            }
+            buf[len] = '\n';
+            buf[len+1] = '\0';
             st->history_len--;
             return 0;
+
         case 4:     /* ctrl-d */
             st->history_len--;
             return (len == 0) ? -1 : 0;
@@ -569,7 +578,6 @@ static int linenoisePrompt(LineReaderStateType *st,
         case 14:    /* ctrl-n */
             seq[1] = 66;
             goto up_down_arrow;
-            break;
         case 27:    /* escape sequence */
             status = readChar(st, fd, &seq[0]);
             if (status < 0)
@@ -682,7 +690,7 @@ up_down_arrow:
             break;
         }
     }
-    return 0;
+    // this line not reachable
 }
 
 static int linenoiseRaw(LineReaderStateType *st, 
@@ -722,6 +730,8 @@ int LineRead(LineReaderStateType *st, const char *prompt, char *dest, size_t des
   //  -2 for EINTR as from ctl-C on interactive input
   // -3 for EOF on stdin
   // -4 for line too long
+  // *dest includes '\n' as last character if users typed CR character to
+  //   terminate the input of a line
 
     if (st->unsupportedTerm < 0) {
       st->unsupportedTerm = isUnsupportedTerm();
@@ -731,13 +741,6 @@ int LineRead(LineReaderStateType *st, const char *prompt, char *dest, size_t des
         fflush(stdout);
         // if (fgets(dest, destSize, stdin) == NULL) return NULL;
         int status = UnixIoFgets_(dest, destSize, stdin);
-        if (status == 0) { 
-          size_t len = strlen(dest);
-          while(len && (dest[len-1] == '\n' || dest[len-1] == '\r')) {
-            len--;
-            dest[len] = '\0';
-          }
-        }
         return status;
     } else {
         return linenoiseRaw(st, dest, destSize ,prompt);

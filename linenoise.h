@@ -42,6 +42,8 @@ int LineRead(LineReaderStateType *state, const char *prompt, char *dest, size_t 
   // function result 0 for success, -1 for error,
   // -2 for EINTR as from ctl-C on interactive input,
   // -3 for EOF on stdin
+  // result includes '\n' as last character if users typed CR character to
+  //   terminate the input of a line
   
 int LineReaderHistoryAdd(LineReaderStateType *state, const char *line);
 int LineReaderHistorySetMaxLen(LineReaderStateType *state, int len);

@@ -103,4 +103,10 @@ Allen Otis ,    allen.otis@gemstone.com
   should be
         memcpy(new, st->history, sizeof(char*) * tocopy);
         memset(new + tocopy, 0, sizeof(char*) *(len - tocopy));
- 
+
+--------------
+24 May 2010
+  changes to linenoisePrompt() so that LineRead() includes '\n' in the
+  result buffer if user typed a carriage return, for consistency with
+  file reading code in topaz and gsfile.c  
+   
