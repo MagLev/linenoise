@@ -109,4 +109,8 @@ Allen Otis ,    allen.otis@gemstone.com
   changes to linenoisePrompt() so that LineRead() includes '\n' in the
   result buffer if user typed a carriage return, for consistency with
   file reading code in topaz and gsfile.c  
-   
+  
+---------
+1 July 2010
+  change behavior of ctrl-d to be "delete current character"
+  so behavior is less confusing to Emacs users. 

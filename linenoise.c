@@ -536,9 +536,18 @@ static int linenoisePrompt(LineReaderStateType *st,
             st->history_len--;
             return 0;
 
-        case 4:     /* ctrl-d */
-            st->history_len--;
-            return (len == 0) ? -1 : 0;
+        case 4:     /* ctrl-d , maglev semantics - delete current character*/
+            if (len > 0 && pos < len) {
+              if (pos < len - 1) {
+                memmove(buf+pos, buf+pos+1, len - pos -1);
+              }
+              len -= 1;
+	      buf[len] = '\0';
+	      status = refreshLine(fd,prompt,buf,len,pos,cols);
+	      if (status < 0)
+		return status;
+            }
+            break;
         case 3:     /* ctrl-c */
             if (HostGetSigTerm()) {
               return -1;
