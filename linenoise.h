@@ -49,6 +49,9 @@ int LineReaderHistoryAdd(LineReaderStateType *state, const char *line);
 int LineReaderHistorySetMaxLen(LineReaderStateType *state, int len);
 int LineReaderHistoryMaxLen(LineReaderStateType *state);
 
+int LineReaderHistoryLength(LineReaderStateType *state);
+const char* LineReaderHistoryAt(LineReaderStateType *state, int idx);
+
 void LineReadShutdown(LineReaderStateType *st);
 
 LineReaderStateType* LineReaderAllocate();

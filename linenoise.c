@@ -72,16 +72,20 @@
  * 
  */
 #include "flag.ht"
+#if !defined(FLG_MSWIN32)
 #include <termios.h>
 #include <unistd.h>
+#endif
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
 #include <sys/types.h>
+#if !defined(FLG_MSWIN32)
 #include <sys/ioctl.h>
 #include <unistd.h>
+#endif
 
 static int checkEintr();
 
@@ -784,6 +788,20 @@ int LineReaderHistoryMaxLen(LineReaderStateType *st)
 {
   return st->history_max_len;
 }
+
+int LineReaderHistoryLength(LineReaderStateType *st)
+{
+  return st->history_len;
+}
+
+const char* LineReaderHistoryAt(LineReaderStateType *st, int idx)
+{
+  if (idx >= 0 && idx < st->history_len) {
+    return st->history[idx];
+  }
+  return NULL;
+}
+
 
 int LineReaderHistorySetMaxLen(LineReaderStateType *st, int len) 
 {
