@@ -496,7 +496,7 @@ static int linenoisePrompt(LineReaderStateType *st,
     size_t pos = 0;
     size_t len = 0;
     size_t cols = getColumns();
-    if (cols < 0) {
+    if ((int)cols < 0) {
       int status = cols;
       return status;
     } 
