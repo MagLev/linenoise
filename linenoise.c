@@ -435,8 +435,11 @@ void LineReadShutdown(LineReaderStateType *st)
 
 
 static int refreshLine(int fd, const char *prompt, char *buf, size_t len, size_t pos, 
-				size_t cols) 
+				size_t cols, int echoing) 
 {
+    if (! echoing)
+      return 0;  // don't echo a password entry
+
     size_t plen = strlen(prompt);
     
     while((plen+pos) >= cols) {
@@ -484,13 +487,14 @@ static int refreshLine(int fd, const char *prompt, char *buf, size_t len, size_t
     }
 }
 
-static int linenoisePrompt(LineReaderStateType *st,
-		int fd, char *buf, size_t buflen, const char *prompt) 
+static int linenoisePrompt(LineReaderStateType *st, int fd, 
+		char *buf, size_t buflen, const char *prompt, int echoing) 
 {
   // function result 0 for success or -1 for error,
   //  -2 for EINTR as from ctl-C on interactive input
   //  -3 for EOF on stdin , 
-  // -4 for line too long
+  //  -4 for line too long .
+  // echoing==0 means don't echo what user types (as for password entry)
 
     size_t plen = strlen(prompt);
     size_t pos = 0;
@@ -547,7 +551,7 @@ static int linenoisePrompt(LineReaderStateType *st,
               }
               len -= 1;
 	      buf[len] = '\0';
-	      status = refreshLine(fd,prompt,buf,len,pos,cols);
+	      status = refreshLine(fd,prompt,buf,len,pos,cols, echoing);
 	      if (status < 0)
 		return status;
             }
@@ -565,9 +569,9 @@ static int linenoisePrompt(LineReaderStateType *st,
                 pos--;
                 len--;
                 buf[len] = '\0';
-                status = refreshLine(fd,prompt,buf,len,pos,cols);
-                if (status < 0) 
-                  return status;
+		status = refreshLine(fd,prompt,buf,len,pos,cols, echoing);
+		if (status < 0) 
+		  return status;
             }
             break;
         case 20:    /* ctrl-t */
@@ -576,9 +580,9 @@ static int linenoisePrompt(LineReaderStateType *st,
                 buf[pos-1] = buf[pos];
                 buf[pos] = aux;
                 if (pos != len-1) pos++;
-                status = refreshLine(fd,prompt,buf,len,pos,cols);
-                if (status < 0) 
-                  return status;
+		status = refreshLine(fd,prompt,buf,len,pos,cols, echoing);
+		if (status < 0) 
+		  return status;
             }
             break;
         case 2:     /* ctrl-b */
@@ -603,7 +607,7 @@ left_arrow:
                 /* left arrow */
                 if (pos > 0) {
                     pos--;
-                    status = refreshLine(fd,prompt,buf,len,pos,cols);
+                    status = refreshLine(fd,prompt,buf,len,pos,cols, echoing);
                     if (status < 0) 
                       return status;
                 }
@@ -612,7 +616,7 @@ right_arrow:
                 /* right arrow */
                 if (pos != len) {
                     pos++;
-                    status = refreshLine(fd,prompt,buf,len,pos,cols);
+                    status = refreshLine(fd,prompt,buf,len,pos,cols, echoing);
                     if (status < 0) 
                       return status;
                 }
@@ -636,7 +640,7 @@ up_down_arrow:
                     strncpy(buf, st->history[st->history_len -1 -history_index], buflen);
                     buf[buflen] = '\0';
                     len = pos = strlen(buf);
-                    status = refreshLine(fd,prompt,buf,len,pos,cols);
+                    status = refreshLine(fd,prompt,buf,len,pos,cols, echoing);
                     if (status < 0) 
                       return status;
                 }
@@ -652,11 +656,13 @@ up_down_arrow:
                     if (plen+len < cols) {
                         /* Avoid a full update of the line in the
                          * trivial case. */
-                        status = writeFd(fd,&c,1);
-                        if (status < 0)
-                          return status;
+                        if (echoing) {
+                          status = writeFd(fd,&c,1);
+                          if (status < 0)
+                            return status;
+                        }
                     } else {
-                        status = refreshLine(fd,prompt,buf,len,pos,cols);
+                        status = refreshLine(fd,prompt,buf,len,pos,cols, echoing);
                         if (status < 0) 
                           return status;
                     }
@@ -666,7 +672,7 @@ up_down_arrow:
                     len++;
                     pos++;
                     buf[len] = '\0';
-                    status = refreshLine(fd,prompt,buf,len,pos,cols);
+                    status = refreshLine(fd,prompt,buf,len,pos,cols, echoing);
                     if (status < 0) 
                       return status;
                 }
@@ -678,26 +684,26 @@ up_down_arrow:
         case 21: /* Ctrl+u, delete the whole line. */
             buf[0] = '\0';
             pos = len = 0;
-            status = refreshLine(fd,prompt,buf,len,pos,cols);
+            status = refreshLine(fd,prompt,buf,len,pos,cols, echoing);
             if (status < 0) 
                return status;
             break;
         case 11: /* Ctrl+k, delete from current to end of line. */
             buf[pos] = '\0';
             len = pos;
-            status = refreshLine(fd,prompt,buf,len,pos,cols);
+            status = refreshLine(fd,prompt,buf,len,pos,cols, echoing);
             if (status < 0) 
                return status;
             break;
         case 1: /* Ctrl+a, go to the start of the line */
             pos = 0;
-            status = refreshLine(fd,prompt,buf,len,pos,cols);
+            status = refreshLine(fd,prompt,buf,len,pos,cols, echoing);
             if (status < 0) 
                return status;
             break;
         case 5: /* ctrl+e, go to the end of the line */
             pos = len;
-            status = refreshLine(fd,prompt,buf,len,pos,cols);
+            status = refreshLine(fd,prompt,buf,len,pos,cols, echoing);
             if (status < 0) 
                return status;
             break;
@@ -707,12 +713,13 @@ up_down_arrow:
 }
 
 static int linenoiseRaw(LineReaderStateType *st, 
-			char *buf, size_t buflen, const char *prompt) 
+	        char *buf, size_t buflen, const char *prompt, int echoing) 
 {
   // function result 0 for success or -1 for error,
   //  -2 for EINTR as from ctl-C on interactive input
   //  -3 for EOF on stdin
-  // -4 for line too long
+  //  -4 for line too long .
+  // echoing==0 means don't echo what user types (as for password entry)
 
     int fd = STDIN_FILENO;
 
@@ -728,7 +735,7 @@ static int linenoiseRaw(LineReaderStateType *st,
     if (status < 0)
       return status;
 
-    status = linenoisePrompt(st, fd, buf, buflen, prompt);
+    status = linenoisePrompt(st, fd, buf, buflen, prompt, echoing);
     int dStatus = setRawOutMode(st, fd, 0);
     if (status == 0) {
       status = dStatus;
@@ -737,14 +744,16 @@ static int linenoiseRaw(LineReaderStateType *st,
     return status;
 }
 
-int LineRead(LineReaderStateType *st, const char *prompt, char *dest, size_t destSize)
+int LineRead(LineReaderStateType *st, const char *prompt, char *dest, 
+		size_t destSize, int echoing)
 {
   // function result 0 for success,  -1 for error,
   //  -2 for EINTR as from ctl-C on interactive input
-  // -3 for EOF on stdin
-  // -4 for line too long
+  //  -3 for EOF on stdin
+  //  -4 for line too long .
   // *dest includes '\n' as last character if users typed CR character to
-  //   terminate the input of a line
+  //   terminate the input of a line .
+  // echoing==0 means don't echo what user types (as for password entry)
 
     if (st->unsupportedTerm < 0) {
       st->unsupportedTerm = isUnsupportedTerm();
@@ -756,7 +765,7 @@ int LineRead(LineReaderStateType *st, const char *prompt, char *dest, size_t des
         int status = UnixIoFgets_(dest, destSize, stdin);
         return status;
     } else {
-        return linenoiseRaw(st, dest, destSize ,prompt);
+        return linenoiseRaw(st, dest, destSize, prompt, echoing);
     }
 }
 

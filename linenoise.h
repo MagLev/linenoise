@@ -38,18 +38,21 @@ class LineReaderStateType ;
 
 // All Functions have no effect, or return NULL on Windows
 
-int LineRead(LineReaderStateType *state, const char *prompt, char *dest, size_t destSize);
+int LineRead(LineReaderStateType *state, const char *prompt, char *dest, 
+	   size_t destSize, int echoing = 1);
   // function result 0 for success, -1 for error,
-  // -2 for EINTR as from ctl-C on interactive input,
-  // -3 for EOF on stdin
+  //  -2 for EINTR as from ctl-C on interactive input,
+  //  -3 for EOF on stdin
   // result includes '\n' as last character if users typed CR character to
-  //   terminate the input of a line
+  //   terminate the input of a line .
+  // echoing==0 means don't echo what user types (as for password entry)
   
 int LineReaderHistoryAdd(LineReaderStateType *state, const char *line);
 int LineReaderHistorySetMaxLen(LineReaderStateType *state, int len);
 int LineReaderHistoryMaxLen(LineReaderStateType *state);
 
 int LineReaderHistoryLength(LineReaderStateType *state);
+
 const char* LineReaderHistoryAt(LineReaderStateType *state, int idx);
 
 void LineReadShutdown(LineReaderStateType *st);
