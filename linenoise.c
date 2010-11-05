@@ -841,7 +841,8 @@ LineReaderStateType* LineReaderAllocate()
   return NULL;
 }
 
-int LineRead(LineReaderStateType *state, const char *prompt, char *dest, size_t destSize)
+int LineRead(LineReaderStateType *state, const char *prompt, char *dest, 
+    size_t destSize, int echoing)
 {
   return -1;
 }
