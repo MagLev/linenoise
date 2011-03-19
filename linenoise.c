@@ -6,7 +6,9 @@
  *   http://github.com/antirez/linenoise
  *
  *   Gemstone note: (this file started with linenoise.c from above URL 
-                     as of 24 March 2010 , and has been modified)
+ *     as of 24 March 2010 , 
+ *     as of commit 6770cf56d3194f3e3fe1a73d450a33b48a7912ca
+ *     and has been modified.
  *
  * Does a number of crazy assumptions that happen to be true in 99.9999% of
  * the 2010 UNIX computers around.
