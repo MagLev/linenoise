@@ -182,8 +182,13 @@ static void freeHistory(LineReaderStateType *st)
     if (st->history) {
         int j;
 
-        for (j = 0; j < st->history_len; j++)
+        for (j = 0; j < st->history_len; j++) {
+          if (st->history[j] != NULL) {
             UtlFree(st->history[j]);
+          }
+          st->history[j] = 0;
+        }
+        st->history_len = 0;			// fix 41458
         UtlFree(st->history);
     }
 }
